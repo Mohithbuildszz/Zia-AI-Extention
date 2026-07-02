@@ -1,0 +1,13 @@
+node_modules/
+.lancedb/
+@lancedb/
+vector.json
+
+.vscode/
+
+dist/
+build/
+out/
+
+.env
+*.log
