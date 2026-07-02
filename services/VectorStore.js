@@ -4,15 +4,21 @@ const fs = require('fs');
 const path = require('path');
 const lancedb = require('@lancedb/lancedb');
 
+const IGNORE_DIRS = new Set([
+    "node_modules",
+    ".git",
+    ".vscode",
+    ".lancedb",
+    "@lancedb",
+    "dist",
+    "build",
+    "out"
+]);
+
 const IGNORE_FILES = new Set([
     "vector.json",
-    "package-lock.json"
-    'node_modules',
-    '.git',
-    '.vscode',
-    'dist',
-    'build',
-    'out'
+    "package-lock.json",
+    "chatHistory.json"
 ]);
 
 const SUPPORTED_EXTENSIONS = new Set([
@@ -178,9 +184,9 @@ console.log("[VECTOR] Processing:", fullPath);
                     workspaceRoot,
                     fullPath
                 );
-if (relativePath === "vector.json") {
+if (IGNORE_FILES.has(relativePath)) {
     return;
-} 
+}
             for (const chunk of chunks) {
 
                 try {
@@ -398,15 +404,20 @@ async save(workspaceRoot) {
                 "vector.json"
             );
 
-        fs.writeFileSync(
-            vectorPath,
-            JSON.stringify(
-                this.documents,
-                null,
-                2
-            ),
-            "utf8"
-        );
+for (const chat of this.chats) {
+
+    const filePath = path.join(
+        this.chatHistoryDir,
+        `${chat.id}.json`
+    );
+
+    fs.writeFileSync(
+        filePath,
+        JSON.stringify(chat, null, 2),
+        "utf8"
+    );
+
+}
 
         console.log(
             "[VECTOR] vector.json saved at:",

@@ -10,12 +10,10 @@ const IGNORED_DIRS = new Set([
     '.next',
     '.cache'
 ]);
-
 function walk(dir, depth = 0) {
     if (depth > 4) {
         return [];
     }
-
     try {
         return fs.readdirSync(dir, { withFileTypes: true })
             .filter(entry => !IGNORED_DIRS.has(entry.name))

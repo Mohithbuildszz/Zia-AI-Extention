@@ -1,23 +1,77 @@
 'use strict';
+const fs = require('fs');
+const path = require('path');
 class ChatHistoryService {
-constructor(storage) {
+constructor(storage, workspaceRoot) {
+
     this.storage = storage;
-    this.chats = storage.get("ziaChats", []);
-    this.currentChatId = storage.get("ziaCurrentChat", null);
+    this.workspaceRoot = workspaceRoot;
+
+    this.chatHistoryDir = path.join(
+    workspaceRoot,
+    "chatHistory"
+);
+
+if (!fs.existsSync(this.chatHistoryDir)) {
+    fs.mkdirSync(this.chatHistoryDir, { recursive: true });
+}
+this.chats = [];
+
+if (fs.existsSync(this.chatHistoryDir)) {
+
+    const files = fs.readdirSync(this.chatHistoryDir);
+
+    this.chats = files
+        .filter(file => file.endsWith(".json"))
+        .map(file =>
+            JSON.parse(
+                fs.readFileSync(
+                    path.join(this.chatHistoryDir, file),
+                    "utf8"
+                )
+            )
+        );
+}
+
+this.currentChatId =
+    this.chats.length > 0
+        ? this.chats[this.chats.length - 1].id
+        : null;
+
     if (this.chats.length === 0) {
         this.newChat();
     }
 }
 async save() {
+        console.log("[CHAT] Saving history...");
     await this.storage.update(
-        'ziaChats',
+        "ziaChats",
         this.chats
     );
 
     await this.storage.update(
-        'ziaCurrentChat',
+        "ziaCurrentChat",
         this.currentChatId
     );
+
+    if (this.workspaceRoot) {
+
+for (const chat of this.chats) {
+
+    const filePath = path.join(
+        this.chatHistoryDir,
+        `${chat.id}.json`
+    );
+
+    fs.writeFileSync(
+        filePath,
+        JSON.stringify(chat, null, 2),
+        "utf8"
+    );
+
+}
+
+    }
 
 }
 async newChat() {
@@ -59,6 +113,15 @@ async loadChat(chatId) {
 
 
 async deleteChat(chatId) {
+
+    const filePath = path.join(
+    this.chatHistoryDir,
+    `${chatId}.json`
+);
+
+if (fs.existsSync(filePath)) {
+    fs.unlinkSync(filePath);
+}
     this.chats = this.chats.filter(
         chat => chat.id !== chatId
     );

@@ -29,7 +29,13 @@ class ChatViewProvider {
 //Creates Ollama client.
         
 
-this.chatHistory = new ChatHistoryService(context.workspaceState);  //Stores chat history.
+const workspaceRoot =
+    vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || "";
+
+this.chatHistory = new ChatHistoryService(
+    context.workspaceState,
+    workspaceRoot
+);  //Stores chat history.
 
         this.isSending = false; // Prevents multiple simultaneous requests.
 
