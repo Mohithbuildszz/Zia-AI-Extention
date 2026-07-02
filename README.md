@@ -1,4 +1,4 @@
-# 🚀 Zia AI - Intelligent Coding Assistant for VS Code
+#  Zia AI - Intelligent Coding Assistant for VS Code
 
 > An AI-powered coding assistant built as a VS Code extension that brings local LLMs, Retrieval-Augmented Generation (RAG), semantic code search, and intelligent tool execution directly into the editor.
 
