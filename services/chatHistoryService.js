@@ -1,6 +1,11 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
+const zlib = require('zlib');
+const { promisify } = require('util');
+
+const gzip = promisify(zlib.gzip);
+const gunzip = promisify(zlib.gunzip);
 class ChatHistoryService {
 constructor(storage, workspaceRoot) {
 
@@ -21,16 +26,19 @@ if (fs.existsSync(this.chatHistoryDir)) {
 
     const files = fs.readdirSync(this.chatHistoryDir);
 
-    this.chats = files
-        .filter(file => file.endsWith(".json"))
-        .map(file =>
-            JSON.parse(
-                fs.readFileSync(
-                    path.join(this.chatHistoryDir, file),
-                    "utf8"
-                )
-            )
+  this.chats = files
+    .filter(file => file.endsWith(".json.gz"))
+    .map(file => {
+        const compressed = fs.readFileSync(
+            path.join(this.chatHistoryDir, file)
         );
+
+        const json = zlib
+            .gunzipSync(compressed)
+            .toString("utf8");
+
+        return JSON.parse(json);
+    });
 }
 
 this.currentChatId =
@@ -57,17 +65,19 @@ async save() {
     if (this.workspaceRoot) {
 
 for (const chat of this.chats) {
+const filePath = path.join(
+    this.chatHistoryDir,
+    `${chat.id}.json.gz`
+);
 
-    const filePath = path.join(
-        this.chatHistoryDir,
-        `${chat.id}.json`
-    );
+const json = JSON.stringify(chat, null, 2);
 
-    fs.writeFileSync(
-        filePath,
-        JSON.stringify(chat, null, 2),
-        "utf8"
-    );
+const compressed = await gzip(json);
+
+await fs.promises.writeFile(
+    filePath,
+    compressed
+);
 
 }
 
@@ -114,9 +124,9 @@ async loadChat(chatId) {
 
 async deleteChat(chatId) {
 
-    const filePath = path.join(
+   const filePath = path.join(
     this.chatHistoryDir,
-    `${chatId}.json`
+    `${chatId}.json.gz`
 );
 
 if (fs.existsSync(filePath)) {
