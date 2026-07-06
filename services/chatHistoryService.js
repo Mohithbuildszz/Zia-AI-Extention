@@ -3,8 +3,6 @@ const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
 const { promisify } = require('util');
-
-
 const gzip = promisify(zlib.gzip);
 const gunzip = promisify(zlib.gunzip);
 class ChatHistoryService {
@@ -202,7 +200,7 @@ async forkMessage(messageIndex) {
         createdAt: new Date(),
         updatedAt: new Date(),
 
-        // Copy only messages up to the selected one
+        // Copy only    essages up to the selected one
         messages: JSON.parse(
             JSON.stringify(
                 chat.messages.slice(0, messageIndex + 1)

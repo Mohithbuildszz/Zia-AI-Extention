@@ -1,5 +1,6 @@
 'use strict';
 const vscode = require('vscode');
+const fs = require('fs');
 const AgentService = require('../services/agentService');
 const ChatHistoryService = require('../services/chatHistoryService');
 class ChatViewProvider {
@@ -86,6 +87,10 @@ webviewView.webview.onDidReceiveMessage(
     this._updateWebviewState();
     break;
 
+    case 'exportChat':
+    await this.exportChat();
+    break;
+
         case 'newChat':
     await this.chatHistory.newChat();
     this._updateWebviewState();
@@ -106,6 +111,8 @@ webviewView.webview.onDidReceiveMessage(
     await this.chatHistory.forkMessage(data.index);
     this._updateWebviewState();
     break;
+
+    
 
             case 'log':
                 this._log(
@@ -199,6 +206,48 @@ await this.chatHistory.addMessage(
         });
     }
 
+    async exportChat() {
+    const chat = this.chatHistory.getCurrentChat();
+    if (!chat) {
+        vscode.window.showErrorMessage(
+            "No chat available to export."
+        );
+        return;
+    }
+
+    const uri = await vscode.window.showSaveDialog({
+        defaultUri: vscode.Uri.file(
+            `${chat.title}.json`
+        ),
+        filters: {
+            JSON: ["json"]
+        },
+        saveLabel: "Export Chat"
+    });
+
+    if (!uri) {
+        return;
+    }
+
+    try {
+
+        fs.writeFileSync(
+            uri.fsPath,
+            JSON.stringify(chat, null, 2),
+            "utf8"
+        );
+
+        vscode.window.showInformationMessage(
+            "Chat exported successfully."
+        );
+
+    } catch (err) {
+        vscode.window.showErrorMessage(
+            `Export failed: ${err.message}`
+        );
+
+    }
+}
     
     _getHtmlForWebview(webview) {  //Generates the complete chat UI...Generates the HTML for the webview.
         const nonce = getNonce();
@@ -280,18 +329,42 @@ body {
 
 }
 
-#menu-btn{
+.header-buttons {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
 
-    width:30px;
+#menu-btn,
+#export-btn {
 
-    height:30px;
+    width: 40px;
+    height: 40px;
 
-    border:none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 
-    cursor:pointer;
+    border: none;
+    border-radius: 8px;
+
+    background: transparent;
+    color: var(--vscode-foreground);
+
+    cursor: pointer;
+
+    font-size: 20px;
+    font-weight: 600;
+
+    transition: background 0.2s ease;
 
 }
 
+#menu-btn:hover,
+#export-btn:hover {
+    background: var(--btn-hover);
+}
+    
 #chat-menu{
     position:absolute;
     top:44px;
@@ -623,11 +696,17 @@ cursor:pointer;
 
             <span>CHAT</span>
 
-            <div class="header-buttons">
+      <div class="header-buttons">
 
-                <button id="menu-btn">+</button>
+    <button id="export-btn" title="Export Chat">
+        ⤓
+    </button>
 
-            </div>
+    <button id="menu-btn" title="Menu">
+        +
+    </button>
+
+</div>
 
         </div>
      
@@ -660,15 +739,17 @@ cursor:pointer;
 
                 <div id="status-indicator"></div>
 
-                <div class="button-group">
-                    <button id="clear-btn" title="Clear chat history">
-                        Clear
-                    </button>
+ <div class="button-group">
 
-                    <button id="send-btn">
-                        Send
-                    </button>
-                </div>
+    <button id="clear-btn">
+        Clear
+    </button>
+
+    <button id="send-btn">
+        Send
+    </button>
+
+</div>
 
             </div>
 
@@ -685,6 +766,7 @@ cursor:pointer;
         const input = document.getElementById('prompt-input');
         const sendBtn = document.getElementById('send-btn');
         const clearBtn = document.getElementById('clear-btn');
+        const exportBtn = document.getElementById('export-btn');
         const statusEl = document.getElementById('status-indicator');
         const historyContainer = document.getElementById('chat-history');
         const newChatBtn = document.getElementById('new-chat-btn');
@@ -890,17 +972,23 @@ historyContainer.appendChild(item);
             }
         });
 
-        sendBtn.addEventListener('click', handleSend);
-        clearBtn.addEventListener('click', () => vscode.postMessage({ type: 'clearChat' }));
- newChatBtn.addEventListener('click', () => {
-
+sendBtn.addEventListener('click', handleSend);
+exportBtn.addEventListener('click', () => {
     vscode.postMessage({
-        type:'newChat'
+        type: 'exportChat'
+    });
+});
+
+clearBtn.addEventListener('click', () =>
+    vscode.postMessage({ type: 'clearChat' }));
+
+newChatBtn.addEventListener('click', () => {
+    vscode.postMessage({
+        type: 'newChat'
     });
 
     chatMenu.classList.remove('show');
-
-});  
+});
 
      let streamingContent = '';
      window.addEventListener('message', (event) => {
