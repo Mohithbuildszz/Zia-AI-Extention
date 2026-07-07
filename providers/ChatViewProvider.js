@@ -3,6 +3,7 @@ const vscode = require('vscode');
 const fs = require('fs');
 const AgentService = require('../services/agentService');
 const ChatHistoryService = require('../services/chatHistoryService');
+
 class ChatViewProvider {
     
   constructor(context, extensionUri, outputChannel) {
@@ -112,14 +113,56 @@ webviewView.webview.onDidReceiveMessage(
     this._updateWebviewState();
     break;
 
-    
+   case 'renameChat': {
+console.log("Rename message received:", data);
+    const chat = this.chatHistory
+        .getAllChats()
+        .find(c => c.id === data.id);
+console.log("Chat found:", chat);
+    if (!chat) {
+        break;
+    }
 
-            case 'log':
-                this._log(
-                    `[Webview] ${data.value}`,
-                    data.level || 'INFO'
-                );
-                break;
+    const newTitle = await vscode.window.showInputBox({
+        prompt: "Rename Chat",
+        value: chat.title
+    });
+
+    if (!newTitle || !newTitle.trim()) {
+        break;
+    }
+
+    await this.chatHistory.renameChat(
+        data.id,
+        newTitle.trim()
+    );
+
+    this._updateWebviewState();
+    break;
+}
+
+case "searchChats": {
+
+    const chats =
+        await this.chatHistory.searchChats(data.query);
+
+    this.view.webview.postMessage({
+
+        type: "searchResults",
+
+        chats
+
+    });
+
+    break;
+}
+
+    case 'log':
+     this._log(
+         `[Webview] ${data.value}`,
+        data.level || 'INFO'
+             );
+            break;
         }
     }
 );
@@ -214,7 +257,17 @@ await this.chatHistory.addMessage(
         );
         return;
     }
+async getWorkspaceFiles() {
+    const files = await vscode.workspace.findFiles(
+        "**/*",
+        "**/{node_modules,.git,out,dist,build}/**"
+    );
 
+    return files.map(file => ({
+        name: vscode.workspace.asRelativePath(file),
+        path: file.fsPath
+    }));
+}
     const uri = await vscode.window.showSaveDialog({
         defaultUri: vscode.Uri.file(
             `${chat.title}.json`
@@ -408,6 +461,31 @@ body {
     opacity:.6;
 
 }
+.search-container {
+    padding: 10px;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--panel-bg);
+}
+
+#chat-search {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 12px;
+    border: 1px solid var(--input-border);
+    border-radius: 6px;
+    background: var(--input-bg);
+    color: var(--input-fg);
+    font-size: 13px;
+    outline: none;
+}
+
+#chat-search::placeholder {
+    color: var(--vscode-input-placeholderForeground);
+}
+
+#chat-search:focus {
+    border-color: var(--vscode-focusBorder);
+}
 
 #chat-history{
 
@@ -445,14 +523,43 @@ cursor:pointer;
     text-overflow:ellipsis;
 }
 
+.rename-chat,
 .delete-chat{
+
     margin-left:8px;
+
+    background:transparent;
+
+    border:none;
+
+    cursor:pointer;
+
+    color:var(--vscode-foreground);
+
     opacity:0;
+
     transition:opacity .2s;
+
 }
 
+.history-item:hover .rename-chat,
+.history-item:hover .delete-chat{
+
+    opacity:1;
+
+}
 .history-item:hover .delete-chat{
     opacity:1;
+}
+  .history-actions{
+    display:flex;
+    gap:6px;
+    z-index:999;
+}
+
+.rename-chat,
+.delete-chat{
+    pointer-events:auto;
 }
 #main{
     flex:1;
@@ -717,7 +824,13 @@ cursor:pointer;
     </div>
 
     <hr>
-
+<div class="search-container">
+    <input
+        type="text"
+        id="chat-search"
+        placeholder="Search chats..."
+    />
+</div>
     <div id="chat-history"></div>
 
 </div>
@@ -773,6 +886,7 @@ cursor:pointer;
        
         const menuBtn = document.getElementById('menu-btn');
         const chatMenu = document.getElementById('chat-menu');
+        const chatSearch = document.getElementById('chat-search');
 
 menuBtn.onclick = () => { 
     chatMenu.classList.toggle('show'); 
@@ -910,50 +1024,67 @@ function renderHistory(state) {
         title.className = 'chat-title';
         title.textContent = chat.title;
 
+        // Rename button
+        const rename = document.createElement('button');
+        rename.className = 'rename-chat';
+        rename.textContent = "✎";
+
+       rename.onclick = (e) => {
+    e.stopPropagation();
+console.log("Rename button clicked");
+    vscode.postMessage({
+        type: "renameChat",
+        id: chat.id
+    });
+
+    chatMenu.classList.remove("show");
+};
+
+        // Delete button
         const del = document.createElement('button');
         del.className = 'delete-chat';
-        del.innerHTML = '🗑';
+        del.textContent = "🗑";
 
-del.onclick = (e) => {
+        del.onclick = (e) => {
+            e.stopPropagation();
 
-    e.stopPropagation();
+            vscode.postMessage({
+                type: "deleteChat",
+                id: chat.id
+            });
 
-    vscode.postMessage({
+            chatMenu.classList.remove("show");
+        };
 
-        type:'deleteChat',
+        // Load chat
+        item.onclick = () => {
+            vscode.postMessage({
+                type: "loadChat",
+                id: chat.id
+            });
 
-        id:chat.id
+            chatMenu.classList.remove("show");
+        };
 
-    });
+        const wrapper = document.createElement('div');
+        wrapper.className = 'history-row';
 
-chatMenu.classList.remove('show');
-};
+        const actions = document.createElement('div');
+        actions.className = 'history-actions';
 
-      item.onclick = () => {
+        actions.onclick = (e) => {
+            e.stopPropagation();
+        };
 
-    vscode.postMessage({
+        actions.appendChild(rename);
+        actions.appendChild(del);
 
-        type:'loadChat',
+        wrapper.appendChild(title);
+        wrapper.appendChild(actions);
 
-        id:chat.id
+        item.appendChild(wrapper);
 
-    });
-
-    chatMenu.classList.remove('show');
-
-};
-
-const wrapper = document.createElement('div');
-
-wrapper.className = 'history-row';
-
-wrapper.appendChild(title);
-
-wrapper.appendChild(del);
-
-item.appendChild(wrapper);
-
-historyContainer.appendChild(item);
+        historyContainer.appendChild(item);
 
     });
 
@@ -990,6 +1121,14 @@ newChatBtn.addEventListener('click', () => {
     chatMenu.classList.remove('show');
 });
 
+chatSearch.addEventListener("input", () => {
+console.log(chatSearch.value);
+    vscode.postMessage({
+        type: "searchChats",
+        query: chatSearch.value
+    });
+});
+
      let streamingContent = '';
      window.addEventListener('message', (event) => {
 
@@ -1006,7 +1145,18 @@ newChatBtn.addEventListener('click', () => {
         render(message.state);
         return;
     }
+if (message.type === "searchResults") {
 
+    renderHistory({
+
+        chats: message.chats,
+
+        currentChatId: currentState.currentChatId
+
+    });
+
+    return;
+}
     if (message.type === 'token') {
 
         streamingContent += message.value;

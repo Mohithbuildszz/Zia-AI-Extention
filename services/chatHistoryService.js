@@ -217,6 +217,21 @@ async forkMessage(messageIndex) {
     return forkedChat;
 }
 
+async renameChat(chatId, newTitle) {
+
+    const chat = this.chats.find(c => c.id === chatId);
+
+    if (!chat) {
+        return;
+    }
+
+    chat.title = newTitle.trim();
+
+    chat.updatedAt = new Date();
+
+    await this.save();
+}
+
     getCurrentMessages() {
         const chat = this.getCurrentChat();
         return chat ? chat.messages : [];
@@ -234,6 +249,19 @@ async forkMessage(messageIndex) {
         return this.currentChatId;
     }
 
+searchChats(query) {
+
+    if (!query || query.trim() === "") {
+        return this.getAllChats();
+    }
+
+    query = query.toLowerCase();
+
+    return this.getAllChats().filter(chat =>
+        chat.title.toLowerCase().includes(query)
+    );
+
+}
 
 }
 module.exports = ChatHistoryService;
