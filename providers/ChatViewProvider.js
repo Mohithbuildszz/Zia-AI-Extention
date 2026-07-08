@@ -73,9 +73,22 @@ webviewView.webview.onDidReceiveMessage(
 
         switch (data.type) {
 
-            case 'webviewReady':
-                this._updateWebviewState();
-                break;
+case 'webviewReady': {
+    vscode.window.showInformationMessage("Webview Ready Received");
+
+    const files = await this.getWorkspaceFiles();
+
+    vscode.window.showInformationMessage(
+        `Files: ${files.length}`
+    );
+
+    this.view.webview.postMessage({
+        type: "workspaceFiles",
+        files
+    });
+
+    break;
+}
 
             case 'sendPrompt':
                 await this._handleUserPrompt(
@@ -249,29 +262,18 @@ await this.chatHistory.addMessage(
         });
     }
 
-    async exportChat() {
+async exportChat() {
     const chat = this.chatHistory.getCurrentChat();
+
     if (!chat) {
         vscode.window.showErrorMessage(
             "No chat available to export."
         );
         return;
     }
-async getWorkspaceFiles() {
-    const files = await vscode.workspace.findFiles(
-        "**/*",
-        "**/{node_modules,.git,out,dist,build}/**"
-    );
 
-    return files.map(file => ({
-        name: vscode.workspace.asRelativePath(file),
-        path: file.fsPath
-    }));
-}
     const uri = await vscode.window.showSaveDialog({
-        defaultUri: vscode.Uri.file(
-            `${chat.title}.json`
-        ),
+        defaultUri: vscode.Uri.file(`${chat.title}.json`),
         filters: {
             JSON: ["json"]
         },
@@ -283,7 +285,6 @@ async getWorkspaceFiles() {
     }
 
     try {
-
         fs.writeFileSync(
             uri.fsPath,
             JSON.stringify(chat, null, 2),
@@ -293,14 +294,25 @@ async getWorkspaceFiles() {
         vscode.window.showInformationMessage(
             "Chat exported successfully."
         );
-
     } catch (err) {
         vscode.window.showErrorMessage(
             `Export failed: ${err.message}`
         );
-
     }
 }
+
+async getWorkspaceFiles() {
+    const files = await vscode.workspace.findFiles(
+        "**/*",
+        "**/{node_modules,.git,out,dist,build}/**"
+    );
+
+    return files.map(file => ({
+        name: vscode.workspace.asRelativePath(file),
+        path: file.fsPath
+    }));
+}
+
     
     _getHtmlForWebview(webview) {  //Generates the complete chat UI...Generates the HTML for the webview.
         const nonce = getNonce();
@@ -713,7 +725,53 @@ cursor:pointer;
             border-radius: 8px;
             transition: border-color 0.2s;
         }
+#mention-popup{
 
+    position:absolute;
+
+    left:8px;
+
+    bottom:55px;
+
+    width:300px;
+
+    max-height:220px;
+
+    overflow-y:auto;
+
+    display:none;
+
+    background:var(--panel-bg);
+
+    border:1px solid var(--border-color);
+
+    border-radius:8px;
+
+    box-shadow:0 6px 18px rgba(0,0,0,.4);
+
+    z-index:9999;
+
+}
+
+.mention-item{
+
+    padding:8px 12px;
+
+    cursor:pointer;
+
+}
+
+.mention-item:hover{
+
+    background:var(--btn-hover);
+
+}
+
+.mention-item.active{
+
+    background:var(--btn-bg);
+
+}
         .textarea-wrapper:focus-within {
             border-color: var(--vscode-focusBorder);
         }
@@ -840,14 +898,17 @@ cursor:pointer;
 
         <div id="input-panel">
 
-            <div class="textarea-wrapper">
-                <textarea
-                    id="prompt-input"
-                    placeholder="Ask Zia AI anything..."
-                    rows="1">
-                </textarea>
-            </div>
+<div class="textarea-wrapper">
 
+    <textarea
+        id="prompt-input"
+        placeholder="Ask Zia AI anything..."
+        rows="1">
+    </textarea>
+
+    <div id="mention-popup"></div>
+
+</div>
             <div class="controls">
 
                 <div id="status-indicator"></div>
@@ -887,7 +948,11 @@ cursor:pointer;
         const menuBtn = document.getElementById('menu-btn');
         const chatMenu = document.getElementById('chat-menu');
         const chatSearch = document.getElementById('chat-search');
-
+    let workspaceFiles = [];
+    let filteredFiles = [];
+    let selectedMention = 0;
+const mentionPopup =
+    document.getElementById("mention-popup");
 menuBtn.onclick = () => { 
     chatMenu.classList.toggle('show'); 
 };
@@ -900,10 +965,6 @@ menuBtn.onclick = () => {
     isSending: false
 };
         // Handshake: tell extension we are ready
-       vscode.postMessage({
-    type: 'webviewReady'
-});
-
     
 function render(state) {
     currentState = state;
@@ -983,6 +1044,51 @@ sendBtn.disabled = state.isSending || !input.value.trim();
         gfm: true,
         breaks: true
     });
+}
+
+function renderMentionPopup() {
+
+    mentionPopup.innerHTML = "";
+
+    if (filteredFiles.length === 0) {
+
+        mentionPopup.style.display = "none";
+        return;
+
+    }
+
+    mentionPopup.style.display = "block";
+
+    filteredFiles.forEach((file, index) => {
+
+        const item = document.createElement("div");
+
+        item.className = "mention-item";
+
+        if (index === selectedMention) {
+            item.classList.add("active");
+        }
+
+        item.textContent = file.name;
+
+        item.onclick = () => {
+
+            input.value =
+                input.value.replace(
+                    /@([^\s]*)$/,
+                    "@" + file.name + " "
+                );
+
+            mentionPopup.style.display = "none";
+
+            input.focus();
+
+        };
+
+        mentionPopup.appendChild(item);
+
+    });
+
 }
 
        function handleSend() {
@@ -1090,11 +1196,38 @@ console.log("Rename button clicked");
 
 }
         // Event Listeners
-        input.addEventListener('input', () => {
-            input.style.height = 'auto';
-            input.style.height = Math.min(input.scrollHeight, 200) + 'px';
-            sendBtn.disabled = currentState.isSending || !input.value.trim();
-        });
+       input.addEventListener("input", () => {
+
+    input.style.height = "auto";
+    input.style.height =
+        Math.min(input.scrollHeight, 200) + "px";
+
+    sendBtn.disabled =
+        currentState.isSending ||
+        !input.value.trim();
+
+    const text = input.value;
+
+    const match = text.match(/@([^\s]*)$/);
+
+    if (!match) {
+
+        mentionPopup.style.display = "none";
+        return;
+
+    }
+
+    const query = match[1].toLowerCase();
+
+    filteredFiles = workspaceFiles.filter(file =>
+        file.name.toLowerCase().includes(query)
+    );
+
+    selectedMention = 0;
+
+    renderMentionPopup();
+
+});
 
         input.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
@@ -1133,7 +1266,19 @@ console.log(chatSearch.value);
      window.addEventListener('message', (event) => {
 
     const message = event.data;
+if (message.type === "workspaceFiles") {
 
+    workspaceFiles = message.files;
+
+    console.log(
+        "[Webview] Workspace Files Received:",
+        workspaceFiles.length
+    );
+
+    console.log(workspaceFiles);
+
+    return;
+}
     if (message.type === 'state') {
 
         const old = document.getElementById('streaming-response');
@@ -1180,8 +1325,12 @@ container.scrollTop = container.scrollHeight;
     }
 });
 
-        // Autofocus
-        input.focus();
+// Tell the extension we're ready
+vscode.postMessage({
+    type: "webviewReady"
+});
+
+input.focus();
     </script>
 </body>
 </html>`;
