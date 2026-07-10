@@ -590,38 +590,60 @@ cursor:pointer;
             scroll-behavior: smooth;
         }
 
-        .message {
-            display: flex;
-            flex-direction: column;
-            max-width: 90%;
-            padding: 12px 16px;
-            border-radius: 12px;
-            line-height: 1.6;
-            animation: fadeIn 0.3s ease-out;
-            word-wrap: break-word;
-        }
+.message{
+    display:flex;
+    flex-direction:column;
+    max-width:90%;
+    padding:12px 16px;
+    border-radius:12px;
+    line-height:1.6;
+    word-wrap:break-word;
+    animation:fadeIn .3s ease-out;
+}
+
+.message-actions{
+    display:flex;
+    justify-content:flex-end;
+    gap:6px;
+    margin-top:8px;
+}
+
+.message-actions{
+    opacity:0;
+    transition:opacity .15s ease;
+}
+
+.message.assistant:hover .message-actions{
+    opacity:1;
+}
+    
+.copy-message-btn,
 .fork-message-btn{
 
-    margin-top:8px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
 
-    align-self:flex-end;
+    height:22px;
+    min-width:46px;
 
-    padding:4px 10px;
+    padding:0 10px;
 
     border:none;
+    border-radius:5px;
 
-    border-radius:6px;
+    background:var(--vscode-button-secondaryBackground);
+    color:var(--vscode-button-secondaryForeground);
+
+    font-size:10px;
+    font-weight:500;
 
     cursor:pointer;
 
-    font-size:12px;
-
-    background:var(--vscode-button-secondaryBackground);
-
-    color:var(--vscode-button-secondaryForeground);
-
+    transition:background .15s ease;
 }
 
+.copy-message-btn:hover,
 .fork-message-btn:hover{
 
     background:var(--vscode-button-secondaryHoverBackground);
@@ -631,6 +653,42 @@ cursor:pointer;
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
+
+
+#copy-toast{
+
+    position:fixed;
+
+    bottom:20px;
+    right:20px;
+
+    background:var(--vscode-notifications-background);
+    color:var(--vscode-notifications-foreground);
+
+    padding:6px 12px;
+
+    border-radius:6px;
+
+    font-size:11px;
+
+    opacity:0;
+
+    transform:translateY(10px);
+
+    transition:all .2s ease;
+
+    pointer-events:none;
+
+    z-index:999999;
+
+}
+
+#copy-toast.show{
+
+    opacity:1;
+    transform:translateY(0);
+
+}
 
         .message.user {
             align-self: flex-end;
@@ -889,6 +947,9 @@ cursor:pointer;
         </div>
     </div>
 </div>
+<div id="copy-toast">
+    Copied
+</div>
     <script src="${markedUri}"></script>
     <script nonce="${nonce}">
         const vscode = acquireVsCodeApi(); 
@@ -951,25 +1012,53 @@ state.messages.forEach((m, index) => {
     html += '</div>';
 
     // Show Fork only for assistant messages
-    if (m.role === "assistant") {
-        html +=
-            '<button class="fork-message-btn" data-index="' +
-            index +
-            '">Fork</button>';
+  // Show Copy & Fork only for assistant messages
+if (m.role === "assistant") {
 
-    }
+    html +=
+        '<div class="message-actions">' +
+
+        '<button class="copy-message-btn" data-index="' +
+        index +
+        '">Copy</button>' +
+
+        '<button class="fork-message-btn" data-index="' +
+        index +
+        '">Fork</button>' +
+
+        '</div>';
+}
     html += '</div>';
 });
 
 container.innerHTML = html;
 // Attach click listeners
 document.querySelectorAll(".fork-message-btn").forEach(btn => {
+
     btn.onclick = () => {
         vscode.postMessage({
             type: "forkMessage",
             index: Number(btn.dataset.index)
         });
     };
+
+});
+
+document.querySelectorAll(".copy-message-btn").forEach(btn => {
+
+    btn.onclick = async () => {
+
+        const text =
+            currentState.messages[
+                Number(btn.dataset.index)
+            ].content;
+
+        await navigator.clipboard.writeText(text);
+
+        showCopyToast();
+
+    };
+
 });
 container.scrollTop = container.scrollHeight;
 input.disabled = state.isSending;
@@ -1171,6 +1260,22 @@ console.log(chatSearch.value);
 });
 
      let streamingContent = '';
+     const copyToast =
+    document.getElementById("copy-toast");
+
+function showCopyToast(){
+
+    copyToast.classList.add("show");
+
+    clearTimeout(copyToast.timer);
+
+    copyToast.timer = setTimeout(()=>{
+
+        copyToast.classList.remove("show");
+
+    },1500);
+
+}
      window.addEventListener('message', (event) => {
 
     const message = event.data;
