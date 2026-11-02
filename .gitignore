@@ -1,0 +1,41 @@
+node_modules/
+.lancedb/
+@lancedb/
+vector.json
+
+.vscode/
+
+dist/
+build/
+out/
+
+.env
+*.log
+# VS Code extension packages
+*.vsix
+# Dependencies
+node_modules/
+@lancedb/
+
+# Vector database
+.lancedb/
+
+# VS Code test binaries
+.vscode-test/
+
+# Generated files
+dist/
+build/
+out/
+
+# Extension packages
+*.vsix
+
+# Environment and logs
+.env
+.env.*
+!.env.example
+*.log
+
+# Local chat data
+chatHistory/

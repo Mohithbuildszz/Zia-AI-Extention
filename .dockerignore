@@ -1,0 +1,9 @@
+
+.git
+node_modules
+.vscode-test
+.env
+.env.*
+!.env.example
+coverage
+*.vsix

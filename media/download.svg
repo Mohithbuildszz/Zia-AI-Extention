@@ -1,0 +1,31 @@
+<svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+
+    <g fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
+
+        <!-- Head -->
+        <circle cx="64" cy="48" r="28"></circle>
+
+        <!-- Eyes -->
+        <circle cx="54" cy="44" r="3" fill="currentColor"></circle>
+        <circle cx="74" cy="44" r="3" fill="currentColor"></circle>
+
+        <!-- Mouth -->
+        <path d="M52 58 H76"></path>
+
+        <!-- Antenna -->
+        <path d="M64 12 V20"></path>
+        <circle cx="64" cy="10" r="4" fill="currentColor"></circle>
+
+        <!-- Body -->
+        <path d="M36 82
+                 C36 70, 92 70, 92 82
+                 V108
+                 H36 Z"></path>
+
+        <!-- Arms -->
+        <path d="M24 84 H36"></path>
+        <path d="M92 84 H104"></path>
+
+    </g>
+
+</svg>

@@ -1,0 +1,27 @@
+
+# Development environment
+.devcontainer/**
+.vscode-test/**
+.git/**
+.github/**
+
+# Local user data
+.lancedb/**
+chatHistory/**
+vector.json
+
+# Test files
+test/**
+coverage/**
+
+# Environment files
+.env
+.env.*
+*.log
+
+# Generated packages
+*.vsix
+
+
+.vscode
+.vscode/**
