@@ -13,9 +13,7 @@ function activate(context) {
 
     try {
         const provider = new ChatViewProvider(
-             context,
-    context.extensionUri,
-    outputChannel
+             context,context.extensionUri,outputChannel
         );
 
         console.log('[ZIA] PROVIDER CREATED');
@@ -69,7 +67,5 @@ function deactivate() {
     console.log('[ZIA] Extension Deactivated');
 }
 
-module.exports = {
-    activate,
-    deactivate
-};
+
+module.exports = { activate,deactivate };

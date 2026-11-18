@@ -86,7 +86,7 @@ case 'webviewReady': {
         type: "workspaceFiles",
         files
     });
-
+this._updateWebviewState();
     break;
 }
 
@@ -381,17 +381,11 @@ body {
 }
 
 #chat-header{
-
     display:flex;
-
     justify-content:space-between;
-
     align-items:center;
-
     padding:10px 14px;
-
     border-bottom:1px solid var(--border-color);
-
 }
 
 .header-buttons {
@@ -430,36 +424,43 @@ body {
     background: var(--btn-hover);
 }
     
-#chat-menu{
-    position:absolute;
-    top:44px;
-    right:10px;
 
-    width:280px;
+#chat-menu {
+    position: absolute;
+    top: 44px;
+    right: 10px;
+    width: 280px;
 
-    background:var(--panel-bg);
-    border:1px solid var(--border-color);
-    border-radius:8px;
-    box-shadow:0 8px 20px rgb(0, 0, 0);
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
 
-    display:none;
-    overflow:hidden;
+    display: none;
+    overflow: hidden;
+
+    z-index: 9999;
+    pointer-events: auto;
 }
 
-#chat-menu.show{
-
-    display:block;
-
+#chat-menu.show {
+    display: block;
+    pointer-events: auto;
 }
+
+#chat-search {
+    position: relative;
+    z-index: 10000;
+    pointer-events: auto;
+    cursor: text;
+}
+
 
 #new-chat-btn{
 
     width:100%;
-
     padding:10px;
-
     border:none;
-
     text-align:left;
 
 }
@@ -467,9 +468,7 @@ body {
 .menu-title{
 
     padding:10px;
-
     font-size:11px;
-
     opacity:.6;
 
 }
@@ -502,7 +501,6 @@ body {
 #chat-history{
 
     max-height:300px;
-
     overflow-y:auto;
 
 }
@@ -537,21 +535,13 @@ cursor:pointer;
 
 .rename-chat,
 .delete-chat{
-
     margin-left:8px;
-
     background:transparent;
-
     border:none;
-
     cursor:pointer;
-
     color:var(--vscode-foreground);
-
     opacity:0;
-
     transition:opacity .2s;
-
 }
 
 .history-item:hover .rename-chat,
@@ -588,6 +578,40 @@ cursor:pointer;
             flex-direction: column;
             gap: 20px;
             scroll-behavior: smooth;
+            position: relative;
+            z-index: 0;
+
+.empty-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    gap: 10px;
+    opacity: 0.85;
+}
+
+.welcome-icon {
+    font-size: 38px;
+    color: var(--vscode-textLink-foreground);
+}
+
+.empty-state h2 {
+    font-size: 18px;
+    margin: 0;
+}
+
+.empty-state p {
+    margin: 0;
+    font-size: 13px;
+}
+
+.empty-state span {
+    font-size: 11px;
+    opacity: 0.65;
+}
+
         }
 
 .message{
@@ -816,20 +840,22 @@ cursor:pointer;
         .textarea-wrapper:focus-within {
             border-color: var(--vscode-focusBorder);
         }
-        textarea {
-            width: 100%;
-            min-height: 44px;
-            max-height: 200px;
-            background: transparent;
-            color: var(--input-fg);
-            border: none;
-            padding: 12px;
-            resize: none;
-            font-family: inherit;
-            font-size: inherit;
-            outline: none;
-            display: block;
-        }
+     
+textarea {
+    width: 100%;
+    min-height: 68px;
+    max-height: 200px;
+    background: transparent;
+    color: var(--input-fg);
+    border: none;
+    padding: 12px;
+    resize: none;
+    font-family: inherit;
+    font-size: inherit;
+    outline: none;
+    display: block;
+}
+
 
         .controls {
             display: flex;
@@ -922,12 +948,10 @@ cursor:pointer;
         <div id="chat-container"></div>
         <div id="input-panel">
 <div class="textarea-wrapper">
-
-    <textarea
-        id="prompt-input"
-        placeholder="Ask Zia AI anything..."
-        rows="1">
-    </textarea>
+<textarea
+    id="prompt-input"
+    placeholder="Ask Zia AI anything..."
+    rows="1"></textarea>
 
     <div id="mention-popup"></div>
 
@@ -1001,9 +1025,30 @@ function render(state) {
             // Render messages
 // Render messages
 
+const messages = Array.isArray(state.messages)
+    ? state.messages
+    : [];
+
 let html = "";
 
-state.messages.forEach((m, index) => {
+const hasUserMessages = messages.some(
+    message => message.role === 'user'
+);
+
+if (!hasUserMessages) {
+    html =
+        '<div class="empty-state">' +
+            '<div class="welcome-icon">✦</div>' +
+            '<h2>Welcome to Zia AI</h2>' +
+            '<p>Your intelligent coding assistant.</p>' +
+            '<span>Ask questions, explore your code, and build better.</span>' +
+        '</div>';
+}
+
+
+
+(hasUserMessages ? messages : []).forEach((m, index) => {
+
 
     html += '<div class="message ' + m.role + '">';
     html += '<div class="role-label">' + m.role + '</div>';

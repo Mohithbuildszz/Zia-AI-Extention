@@ -5,13 +5,10 @@ const EmbeddingService = require('../services/EmbeddingService');
 const VectorStore = require('../services/VectorStore');
 
 class RagService {
-
     constructor(workspaceRoot, client) {
-
         if (!workspaceRoot) {
             throw new Error('Workspace root is required.');
         }
-
         this.workspaceRoot = workspaceRoot;
 
         this.embeddingService = new EmbeddingService(client);
@@ -39,26 +36,20 @@ class RagService {
         try {
 
             console.log('[RAG] Initializing RAG service...');
-
             // Step 1: Initialize LanceDB.
             await this.vectorStore.initialize(
                 this.workspaceRoot
             );
-
             console.log('[RAG] VectorStore initialized.');
-
             // Step 2: Index workspace files.
             await this.vectorStore.indexWorkspace(
                 this.workspaceRoot,
                 this.embeddingService
             );
-
             this.initialized = true;
-
             console.log('[RAG] Workspace indexing completed.');
-
             return true;
-
+            
         } catch (error) {
 
             this.initialized = false;
